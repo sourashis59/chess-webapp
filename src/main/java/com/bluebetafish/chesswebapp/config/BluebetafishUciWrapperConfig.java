@@ -5,9 +5,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class BluebetafishUCIWrapperConfig {
+public class BluebetafishUciWrapperConfig {
     @Bean
-    public UCI bluebetafishUCIWrapperConfig() {
+    public UCI bluebetafishUciWrapper() {
         UCI uci = new UCI();
         uci.startBluebetafish();
         return uci;

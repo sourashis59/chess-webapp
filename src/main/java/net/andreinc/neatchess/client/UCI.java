@@ -29,7 +29,13 @@ import static net.andreinc.neatchess.client.breaks.Break.breakOn;
  */
 public class UCI {
 
-    private static final String STOCKFISH = "stockfish";
+//    private static final String STOCKFISH = "stockfish";
+    private static final String STOCKFISH = "src/main/resources/static/engines/stockfish/stockfish";
+
+    //bluebetafish_64bit_linux
+    private static final String BLUEBETAFISH = "src/main/resources/static/engines/bluebetafish/bluebetafish_64bit_linux";
+
+
     private static final String LC0 = "lc0";
 
     private static final long DEFAULT_TIMEOUT_VALUE = 60_000000l;
@@ -55,6 +61,10 @@ public class UCI {
 
     public void startStockfish() {
         start(STOCKFISH);
+    }
+
+    public void startBluebetafish() {
+        start(BLUEBETAFISH);
     }
 
     public void startLc0() {
@@ -96,7 +106,14 @@ public class UCI {
             try {
                 writer.flush();
                 writer.write(cmd + "\n");
-                writer.write("isready\n");
+
+                // printing "isready" after executing "go movetime ..."
+                // will stop the search for bluebetafish.
+                // so dont print "isready" when "go movetime/depth ..." is running
+                if (!cmd.contains("go")) {
+                    writer.write("isready\n");
+                }
+
                 writer.flush();
                 String line = "";
                 while ((line = reader.readLine()) != null) {
