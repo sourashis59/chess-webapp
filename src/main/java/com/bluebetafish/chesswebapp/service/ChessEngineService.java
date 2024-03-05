@@ -16,7 +16,7 @@ public class StockFishService {
     public String getBestMove(String fen) {
         stockfishUciWrapper.uciNewGame();
         stockfishUciWrapper.positionFen(fen);
-        var result10depth = stockfishUciWrapper.bestMove(10).getResultOrThrow();
+        var result10depth = stockfishUciWrapper.bestMove(1500L, 60000).getResultOrThrow();
         System.out.println("Best move after analysing 10 moves deep: " + result10depth.getCurrent());
 
         return result10depth.getCurrent();

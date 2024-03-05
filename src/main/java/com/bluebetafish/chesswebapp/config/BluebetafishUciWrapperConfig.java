@@ -5,11 +5,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class StockfishUCIWrapperConfig {
+public class BluebetafishUCIWrapperConfig {
     @Bean
-    public UCI stockfishUciWrapper() {
+    public UCI bluebetafishUCIWrapperConfig() {
         UCI uci = new UCI();
-        uci.startStockfish();
+        uci.startBluebetafish();
         return uci;
+
     }
 }
