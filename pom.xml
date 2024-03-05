@@ -33,12 +33,12 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- Wrapper class for UCI chess engine -->
-		<dependency>
-			<groupId>net.andreinc</groupId>
-			<artifactId>neatchess</artifactId>
-			<version>1.0</version>
-		</dependency>
+<!--		&lt;!&ndash; Wrapper class for UCI chess engine &ndash;&gt;-->
+<!--		<dependency>-->
+<!--			<groupId>net.andreinc</groupId>-->
+<!--			<artifactId>neatchess</artifactId>-->
+<!--			<version>1.1</version>-->
+<!--		</dependency>-->
 	</dependencies>
 
 	<build>

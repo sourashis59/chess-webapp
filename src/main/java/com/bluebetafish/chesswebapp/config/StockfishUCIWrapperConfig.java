@@ -5,9 +5,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class UCIWrapperConfig {
+public class StockfishUCIWrapperConfig {
     @Bean
-    public UCI uci() {
+    public UCI stockfishUciWrapper() {
         UCI uci = new UCI();
         uci.startStockfish();
         return uci;
