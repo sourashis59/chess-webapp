@@ -5,16 +5,30 @@
 
     <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
     <link rel="stylesheet" href="static/css/chessboardjs/chessboard-1.0.0.css">
+    <link rel="stylesheet" href="static/css/chessboardjs/homepage.css">
+
   </head>
 
   <body>
     <div id="myBoard" style="width: 700px"></div>
+    
     <label>Status:</label>
-    <div id="status"></div>
-    <label>FEN:</label>
+    <div id="statusDiv"></div>
+    <br/>
+
+    <label>FEN:</label> 
     <div id="fen"></div>
+    
     <label>PGN:</label>
     <div id="pgn"></div>
+
+    
+    <button id="new-game-white-button">New Game(Play as White)</button>
+    <button id="new-game-black-button">New Game(Play as Black)</button>
+
+<!--    <button id="change-player-button">Change player</button>-->
+<!--    <button id=""></button>-->
+
 
     <script src="static/js/lib/chessboardjs/chessboard-1.0.0.js"></script>
     <script src="static/js/lib/chessjs/chess.js"></script>
