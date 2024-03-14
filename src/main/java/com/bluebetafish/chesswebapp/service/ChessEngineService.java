@@ -13,7 +13,7 @@ public class ChessEngineService {
 //    @Autowired
 //    private UCI bluebetafishUciWrapper;
 
-    public String getBestMove(String fen) {
+    public String getBestMove(String fen, long moveTime) {
 
         /*
         * TODO:
@@ -29,7 +29,7 @@ public class ChessEngineService {
         * */
         UCI bluebetafishUciWrapper = new UCI();
 
-        System.out.println("\nReceived request: fen= " + fen);
+        System.out.println("\nReceived request: moveTime = " + moveTime + ", fen= " + fen);
         System.out.println("Time= " + LocalTime.now());
 
         bluebetafishUciWrapper.startBluebetafish();
@@ -38,7 +38,8 @@ public class ChessEngineService {
 
         //* be careful: if you pass int as first arg, then overloaded function bestMove(depth, timeout) is called,
         //* and if you pass long as first arg, then overloaded function bestMove(moveTime, timeout) is called
-        var result10depth = bluebetafishUciWrapper.bestMove(10000L, 60000).getResultOrThrow();
+        //* timeout limit is 60sec now
+        var result10depth = bluebetafishUciWrapper.bestMove(moveTime, 60000).getResultOrThrow();
 
         System.out.println("Best move after analysing 10 moves deep: " + result10depth.getCurrent());
         System.out.println("Time= " + LocalTime.now());

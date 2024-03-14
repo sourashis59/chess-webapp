@@ -13,8 +13,17 @@ public class ChessEngineController {
     private ChessEngineService stockFishService;
 
     @GetMapping("/bestmove")
-    public String bestMove(@RequestParam String fen) {
-        return stockFishService.getBestMove(fen);
+    public String bestMove(@RequestParam("fen") String fen,
+                           @RequestParam("movetime") long moveTime) {
+        //* keep some bound on the min and max time of moveTime
+        //* dont take wrong input from user
+        moveTime = Math.min(moveTime, 30);
+        moveTime = Math.max(moveTime, 1);
+
+        //* Received moveTime is in seconds. Convert it to ms
+        moveTime *= 1000;
+
+        return stockFishService.getBestMove(fen, moveTime);
     }
 
 }

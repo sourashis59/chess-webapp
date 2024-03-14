@@ -79,8 +79,9 @@ function onDropHandler (source, target) {
 function playEngineMove() {
   console.log("\n\nmaking request, curr time = " + (new Date()))
 
+  let url = "/api/bestmove?fen=" + game.fen() + "&movetime=" + timeSlider.value;
   //* get best move
-  playEngineMoveGetRequestXHR = $.get("/api/bestmove?fen=" + game.fen(), function (response) {
+  playEngineMoveGetRequestXHR = $.get(url, function (response) {
     console.log("got response for request, curr time = " + (new Date()))
     console.log("response: " + response)
     console.log("\ngame.fen(): " + game.fen())
@@ -155,6 +156,9 @@ let currOrientation = 'white'
 let newGameWhiteButton = document.getElementById("new-game-white-button")
 let newGameBlackButton = document.getElementById("new-game-black-button")
 
+let timeSlider = document.getElementById('time-slider')
+let timeSliderValueDiv = document.getElementById('time-slider-value')
+
 //let changePlayerButton = document.getElementById("change-player-button");
 //
 //changePlayerButton.addEventListener("click", function(){
@@ -183,12 +187,13 @@ function reset() {
 
   updateStatusDivs()
 
-  //if we requested a best move from server, 
-  //then we need to cancel the request
+  //* if we requested a best move from server,
+  //* then we need to cancel the request
   if (playEngineMoveGetRequestXHR) {
     playEngineMoveGetRequestXHR.abort()
   }
 
+  timeSliderValueDiv.textContent = timeSlider.value;
 }
 
 
@@ -203,7 +208,9 @@ newGameBlackButton.addEventListener('click', function() {
   playEngineMove()
 })
 
-
+timeSlider.addEventListener("input", function() {
+  timeSliderValueDiv.textContent = this.value;
+});
 
 
 
