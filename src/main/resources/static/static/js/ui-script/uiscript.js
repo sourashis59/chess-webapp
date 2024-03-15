@@ -4,9 +4,13 @@ let board = null;
 let statusDiv = document.getElementById("statusDiv");
 let fen = document.getElementById("fen");
 let pgn = document.getElementById("pgn");
+let engineStatusTextDiv = document.getElementById('engine-status-text-div')
+let engineStatusSpinner = document.getElementById('engine-status-spinner')
+
 let game = new Chess();
 
 let playEngineMoveGetRequestXHR;
+
 
 /*
  * Documentattion:
@@ -36,6 +40,7 @@ function onDragStartHandler(source, piece, position, orientation) {
     return false;
   }
 }
+
 
 /*
  * Fires when a piece is dropped.
@@ -76,31 +81,62 @@ function onDropHandler(source, target) {
 function playEngineMove() {
   console.log("\n\nmaking request, curr time = " + new Date());
 
-  let url = "/api/bestmove?fen=" + game.fen() + "&movetime=" + timeSlider.value;
+  //*show spinner and remove text
+  engineStatusSpinner.hidden = false
+  engineStatusTextDiv.innerHTML = ""
+
+  let moveTimeInSeconds = timeSlider.value;
+  //* time out limit = (moveTime + 5) seconds
+  let timeOut = (parseInt(moveTimeInSeconds) + 5) * 1000;
+  let url = "/api/bestmove?fen=" + game.fen() + "&movetime=" + moveTimeInSeconds;
+
   //* get best move
-  playEngineMoveGetRequestXHR = $.get(url, function (response) {
-    console.log("got response for request, curr time = " + new Date());
-    console.log("response: " + response);
-    console.log("\ngame.fen(): " + game.fen());
+  playEngineMoveGetRequestXHR = $.ajax(
+  {
+    url: url,
+    method: 'GET',
+    timeout: timeOut,
 
-    //*TODO: parse move properly in case of promotion
-    if (
-      game.move({
-        from: response[0] + response[1],
-        to: response[2] + response[3],
-      }) === null
-    ) {
-      console.log(".move() failed!!!!");
+    success: function (response) {
+      console.log("got response for request, curr time = " + new Date());
+      console.log("response: " + response);
+      console.log("\ngame.fen(): " + game.fen());
+  
+      //*TODO: parse move properly in case of promotion
+      if (
+        game.move({
+          from: response[0] + response[1],
+          to: response[2] + response[3],
+        }) === null
+      ) {
+        console.log(".move() failed!!!!");
+      }
+      console.log("game.fen(): " + game.fen());
+  
+      //* update ui board
+      board.position(game.fen());
+  
+      //* hide spinner and show engine output
+      engineStatusSpinner.hidden = true
+      engineStatusTextDiv.innerHTML = response
+    },
+
+    error: function(xhr, status, error) {
+      // Handle error
+      console.error("Error:", error);
+  
+      //*hide spinner
+      engineStatusSpinner.hidden = true
+      engineStatusTextDiv.innerHTML = "Error: " + error;
+  
     }
-    console.log("game.fen(): " + game.fen());
-
-    // update ui board
-    board.position(game.fen());
-  }).fail(function (xhr, status, error) {
-    // Handle error
-    console.error("Error:", error);
+    
   });
+
+  
+    
 }
+
 
 /*
  * Call api to get best move
@@ -108,8 +144,9 @@ function playEngineMove() {
  */
 function getBestMoveFromFen(fen) {}
 
-// update the board position after the piece snap
-// for castling, en passant, pawn promotion
+
+//* update the board position after the piece snap
+//* for castling, en passant, pawn promotion
 function onSnapEndHandler() {
   board.position(game.fen());
 }
@@ -141,6 +178,7 @@ function updateStatusDivs() {
   pgn.innerHTML = "      " + game.pgn();
 }
 
+
 let currOrientation = "white";
 
 let newGameWhiteButton = document.getElementById("new-game-white-button");
@@ -155,6 +193,7 @@ let timeSliderValueDiv = document.getElementById("time-slider-value");
 //  currOrientation = (currOrientation === 'white') ? 'black' : 'white';
 //  board.orientation(currOrientation);
 //});
+
 
 function reset() {
   //enable buttons
@@ -182,6 +221,8 @@ function reset() {
   }
 
   timeSliderValueDiv.textContent = timeSlider.value;
+  engineStatusSpinner.hidden = true
+  engineStatusTextDiv.innerHTML = ""
 }
 
 
