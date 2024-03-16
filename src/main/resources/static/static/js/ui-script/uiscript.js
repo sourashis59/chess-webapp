@@ -1,16 +1,64 @@
 console.log("\nhello");
 
-let board = null;
+//*------------------------------- HTML elements -----------------------------------------//
 let statusDiv = document.getElementById("statusDiv");
-let fen = document.getElementById("fen");
-let pgn = document.getElementById("pgn");
+let fenDiv = document.getElementById("fen");
+let pgnDiv = document.getElementById("pgn");
 let engineStatusTextDiv = document.getElementById('engine-status-text-div')
 let engineStatusSpinner = document.getElementById('engine-status-spinner')
+let newGameWhiteButton = document.getElementById("new-game-white-button");
+let newGameBlackButton = document.getElementById("new-game-black-button");
+let timeSlider = document.getElementById("time-slider");
+let timeSliderValueDiv = document.getElementById("time-slider-value");
 
+
+//*----------------------------- variables ----------------------------------------//
+//* config for board ui object
+const config = {
+  draggable: true,
+  position: "start",
+  onDragStart: onDragStartHandler,
+  onDrop: onDropHandler,
+  onSnapEnd: onSnapEndHandler,
+
+  showNotation: "true",
+  showErrors: "console",
+};
+
+//* board object: used for ui of board
+let board = null;
+//*game object is used for handling chess logic
 let game = new Chess();
+let currOrientation = "white";
 
+//* used to store the connection for getting best move
 let playEngineMoveGetRequestXHR;
 
+
+
+
+
+
+//*------------------------------------ Event Listners ----------------------------------------//
+
+newGameWhiteButton.addEventListener("click", function () {
+  reset();
+});
+
+newGameBlackButton.addEventListener("click", function () {
+  reset();
+  board.orientation("black");
+  playEngineMove();
+});
+
+timeSlider.addEventListener("input", function () {
+  timeSliderValueDiv.textContent = this.value;
+});
+
+
+
+
+//*-------------------------------------------- functions -------------------------------------------//
 
 /*
  * Documentattion:
@@ -30,7 +78,8 @@ let playEngineMoveGetRequestXHR;
  */
 function onDragStartHandler(source, piece, position, orientation) {
   //* do not let the user drag any piece, if game is over
-  if (game.game_over()) return false;
+  if (game.game_over()) 
+    return false;
 
   //* only let user pick up pieces for the side to move
   if (
@@ -73,10 +122,31 @@ function onDropHandler(source, target) {
   //* to the original square from where drag started
   if (move === null) return "snapback";
 
-  playEngineMove();
-  //* update the divs with status
+  //*TODO: when engine is thinking, dont let user play on it's behalf
+  //*for now cancel last move request
+  if (playEngineMoveGetRequestXHR) {
+    playEngineMoveGetRequestXHR.abort()
+  }
+
   updateStatusDivs();
+  playEngineMove();
 }
+
+
+function parseAlgebraicMove(moveString) {
+  let res = {
+    from: moveString[0] + moveString[1],
+    to: moveString[2] + moveString[3],
+  }
+
+  if (moveString.length > 4) {
+    // TODO: 
+    res.promotion = moveString[4].toLowerCase()
+  } 
+  
+  return res;
+}
+
 
 function playEngineMove() {
   console.log("\n\nmaking request, curr time = " + new Date());
@@ -104,10 +174,7 @@ function playEngineMove() {
   
       //*TODO: parse move properly in case of promotion
       if (
-        game.move({
-          from: response[0] + response[1],
-          to: response[2] + response[3],
-        }) === null
+        game.move(parseAlgebraicMove(response)) === null
       ) {
         console.log(".move() failed!!!!");
       }
@@ -119,6 +186,9 @@ function playEngineMove() {
       //* hide spinner and show engine output
       engineStatusSpinner.hidden = true
       engineStatusTextDiv.innerHTML = response
+
+      //* update the divs with status
+      updateStatusDivs();
     },
 
     error: function(xhr, status, error) {
@@ -134,7 +204,7 @@ function playEngineMove() {
   });
 
   
-    
+
 }
 
 
@@ -151,41 +221,31 @@ function onSnapEndHandler() {
   board.position(game.fen());
 }
 
+
 function updateStatusDivs() {
   var statusString = "";
-
   var moveColor = "White";
   if (game.turn() === "b") {
     moveColor = "Black";
   }
 
   if (game.in_checkmate()) {
-    statusString = "Game over, " + moveColor + " is in checkmate.";
+    statusString = "Game over[" + moveColor + " is checkmated]";
   } else if (game.in_draw()) {
-    statusString = "Game over, drawn position";
+    statusString = "Game over[Draw]";
   } else {
     statusString = moveColor + " to move";
-
     if (game.in_check()) {
-      statusString += ", " + moveColor + " is in check";
+      statusString += ", " + moveColor + " is in check!";
     }
   }
 
   console.log("statusString= " + statusString);
   console.log("statusDiv: " + statusDiv);
   statusDiv.innerHTML = "      " + statusString;
-  fen.innerHTML = "      " + game.fen();
-  pgn.innerHTML = "      " + game.pgn();
+  fenDiv.innerHTML = "      " + game.fen();
+  pgnDiv.innerHTML = "      " + game.pgn();
 }
-
-
-let currOrientation = "white";
-
-let newGameWhiteButton = document.getElementById("new-game-white-button");
-let newGameBlackButton = document.getElementById("new-game-black-button");
-
-let timeSlider = document.getElementById("time-slider");
-let timeSliderValueDiv = document.getElementById("time-slider-value");
 
 //let changePlayerButton = document.getElementById("change-player-button");
 //
@@ -199,17 +259,6 @@ function reset() {
   //enable buttons
 
   game = new Chess();
-
-  var config = {
-    draggable: true,
-    position: "start",
-    onDragStart: onDragStartHandler,
-    onDrop: onDropHandler,
-    onSnapEnd: onSnapEndHandler,
-
-    showNotation: "true",
-    showErrors: "console",
-  };
   board = Chessboard("myBoard", config);
 
   updateStatusDivs();
@@ -228,24 +277,10 @@ function reset() {
 
 
 
+
+
 reset();
 
 
 
-
-
-
-newGameWhiteButton.addEventListener("click", function () {
-  reset();
-});
-
-newGameBlackButton.addEventListener("click", function () {
-  reset();
-  board.orientation("black");
-  playEngineMove();
-});
-
-timeSlider.addEventListener("input", function () {
-  timeSliderValueDiv.textContent = this.value;
-});
 
