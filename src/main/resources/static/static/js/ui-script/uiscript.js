@@ -5,11 +5,11 @@ let statusDiv = document.getElementById("statusDiv");
 let fenDiv = document.getElementById("fen");
 let pgnDiv = document.getElementById("pgn");
 let engineStatusTextDiv = document.getElementById('engine-status-text-div')
-let engineStatusSpinner = document.getElementById('engine-status-spinner')
 let newGameWhiteButton = document.getElementById("new-game-white-button");
 let newGameBlackButton = document.getElementById("new-game-black-button");
 let timeSlider = document.getElementById("time-slider");
 let timeSliderValueDiv = document.getElementById("time-slider-value");
+let engineThinkingProgressBar = document.getElementById('engine-thinking-progress-bar')
 
 
 //*----------------------------- variables ----------------------------------------//
@@ -34,6 +34,8 @@ let currOrientation = "white";
 //* used to store the connection for getting best move
 let playEngineMoveGetRequestXHR;
 
+//* used to maintain the progress bar
+let progressInterval;
 
 
 
@@ -128,7 +130,6 @@ function onDropHandler(source, target) {
     playEngineMoveGetRequestXHR.abort()
   }
 
-  updateStatusDivs();
   playEngineMove();
 }
 
@@ -151,15 +152,17 @@ function parseAlgebraicMove(moveString) {
 function playEngineMove() {
   console.log("\n\nmaking request, curr time = " + new Date());
 
-  //*show spinner and remove text
-  engineStatusSpinner.hidden = false
-  engineStatusTextDiv.innerHTML = ""
-
   let moveTimeInSeconds = timeSlider.value;
   //* time out limit = (moveTime + 5) seconds
   let timeOut = (parseInt(moveTimeInSeconds) + 5) * 1000;
   let url = "/api/bestmove?fen=" + game.fen() + "&movetime=" + moveTimeInSeconds;
 
+  updateStatusDivs();
+   
+  //*show progress bar and remove text
+  engineStatusTextDiv.innerHTML = ""
+  startProgressUntilTime(parseInt(moveTimeInSeconds))
+  
   //* get best move
   playEngineMoveGetRequestXHR = $.ajax(
   {
@@ -184,7 +187,6 @@ function playEngineMove() {
       board.position(game.fen());
   
       //* hide spinner and show engine output
-      engineStatusSpinner.hidden = true
       engineStatusTextDiv.innerHTML = response
 
       //* update the divs with status
@@ -196,7 +198,6 @@ function playEngineMove() {
       console.error("Error:", error);
   
       //*hide spinner
-      engineStatusSpinner.hidden = true
       engineStatusTextDiv.innerHTML = "Error: " + error;
   
     }
@@ -255,12 +256,53 @@ function updateStatusDivs() {
 //});
 
 
+
+
+
+function startProgressUntilTime(timeInSeconds) {
+    var progressBar = document.getElementById('engine-thinking-progress-bar');
+    var currentValue = 0;
+    //* Milliseconds
+    var interval = 50; 
+    //* Calculate total steps
+    var totalSteps = timeInSeconds * 1000 / interval; 
+    
+    //* Clear any existing progress interval
+    clearInterval(progressInterval);
+    
+    //* Update progress bar at regular intervals
+    progressInterval = setInterval(function() {
+        currentValue++;
+        var progressPercentage = (currentValue / totalSteps) * 100;
+        progressBar.style.width = progressPercentage + "%";
+        progressBar.setAttribute("aria-valuenow", progressPercentage);
+        
+        if (currentValue >= totalSteps) {
+            //* clearInterval(progressInterval); // Stop updating progress when time is reached
+            resetProgressBar()
+        }
+    }, interval);
+}
+
+
+function resetProgressBar() {
+    var progressBar = document.getElementById('engine-thinking-progress-bar');
+    progressBar.style.width = "0%";
+    progressBar.setAttribute("aria-valuenow", "0");
+    //* Stop the progress interval
+    clearInterval(progressInterval); 
+}
+
+
+
+
 function reset() {
-  //enable buttons
+  //*enable buttons
 
   game = new Chess();
   board = Chessboard("myBoard", config);
 
+  resetProgressBar();
   updateStatusDivs();
 
   //* if we requested a best move from server,
@@ -270,7 +312,6 @@ function reset() {
   }
 
   timeSliderValueDiv.textContent = timeSlider.value;
-  engineStatusSpinner.hidden = true
   engineStatusTextDiv.innerHTML = ""
 }
 
@@ -280,7 +321,6 @@ function reset() {
 
 
 reset();
-
 
 
 
