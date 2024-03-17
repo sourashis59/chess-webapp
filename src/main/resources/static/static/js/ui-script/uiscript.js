@@ -10,6 +10,7 @@ let newGameBlackButton = document.getElementById("new-game-black-button");
 let timeSlider = document.getElementById("time-slider");
 let timeSliderValueDiv = document.getElementById("time-slider-value");
 let engineThinkingProgressBar = document.getElementById('engine-thinking-progress-bar')
+let resignButton = document.getElementById('resign-button')
 
 
 //*----------------------------- variables ----------------------------------------//
@@ -29,6 +30,8 @@ const config = {
 let board = null;
 //*game object is used for handling chess logic
 let game = new Chess();
+
+//* user is playing white or black?
 let currOrientation = "white";
 
 //* used to store the connection for getting best move
@@ -41,26 +44,46 @@ let progressInterval;
 
 
 
+
 //*------------------------------------ Event Listners ----------------------------------------//
 
 newGameWhiteButton.addEventListener("click", function () {
-  reset();
+  playNewGameAsWhite();
 });
 
 newGameBlackButton.addEventListener("click", function () {
-  reset();
-  board.orientation("black");
-  playEngineMove();
+  playNewGameAsBlack();
 });
 
 timeSlider.addEventListener("input", function () {
   timeSliderValueDiv.textContent = this.value;
 });
 
-
+resignButton.addEventListener('click', function() {
+  if (currOrientation === 'white') {
+    playNewGameAsWhite();
+  } else {
+    playNewGameAsBlack();
+  }
+})
 
 
 //*-------------------------------------------- functions -------------------------------------------//
+
+function playNewGameAsWhite() {
+  reset();
+  board.orientation("white");
+  currOrientation = 'white'
+}
+
+
+function playNewGameAsBlack() {
+  reset();
+  board.orientation("black");
+  currOrientation = 'black'
+  playEngineMove();
+}
+
 
 /*
  * Documentattion:

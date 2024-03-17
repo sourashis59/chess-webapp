@@ -1,3 +1,31 @@
 body{
     background-color: rgb(210, 215, 247);
 }
+
+#myBoard {
+    width:600px;
+}
+
+
+
+
+
+
+@media screen and (max-width: 1001px) {
+    #myBoard {
+        width:500px;
+    }
+}
+
+
+@media screen and (max-width: 1000px) and (max-width: 801px) {
+    #myBoard {
+        width:400px;
+    }
+}
+
+@media screen and (max-width: 1000px) and (max-width: 601px) {
+    #myBoard {
+        width:400px;
+    }
+}
