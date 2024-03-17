@@ -29,3 +29,12 @@ body{
         width:400px;
     }
 }
+
+#fire-explode {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+}

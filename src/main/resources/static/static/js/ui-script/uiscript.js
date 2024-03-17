@@ -85,6 +85,15 @@ function playNewGameAsBlack() {
 }
 
 
+function showFireExplosion() {
+  var fireExplosion = document.getElementById('fire-explode');
+  fireExplosion.style.display = 'block';
+  setTimeout(function() {
+    fireExplosion.style.display = 'none';
+  }, 2000); //* Hide after 2 second
+}
+
+
 /*
  * Documentattion:
  * -----------------------------------------
@@ -255,6 +264,7 @@ function updateStatusDivs() {
 
   if (game.in_checkmate()) {
     statusString = "Game over[" + moveColor + " is checkmated]";
+    showFireExplosion()
   } else if (game.in_draw()) {
     statusString = "Game over[Draw]";
   } else {
