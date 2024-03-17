@@ -1,3 +1,40 @@
 body{
     background-color: rgb(210, 215, 247);
 }
+
+#myBoard {
+    width:600px;
+}
+
+
+
+
+
+
+@media screen and (max-width: 1001px) {
+    #myBoard {
+        width:500px;
+    }
+}
+
+
+@media screen and (max-width: 1000px) and (max-width: 801px) {
+    #myBoard {
+        width:400px;
+    }
+}
+
+@media screen and (max-width: 1000px) and (max-width: 601px) {
+    #myBoard {
+        width:400px;
+    }
+}
+
+#fire-explode {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+}

@@ -1,12 +1,120 @@
 console.log("\nhello");
 
-let board = null;
+//*------------------------------- HTML elements -----------------------------------------//
 let statusDiv = document.getElementById("statusDiv");
-let fen = document.getElementById("fen");
-let pgn = document.getElementById("pgn");
+let fenDiv = document.getElementById("fen");
+let pgnDiv = document.getElementById("pgn");
+let engineStatusTextDiv = document.getElementById('engine-status-text-div')
+let newGameWhiteButton = document.getElementById("new-game-white-button");
+let newGameBlackButton = document.getElementById("new-game-black-button");
+let timeSlider = document.getElementById("time-slider");
+let timeSliderValueDiv = document.getElementById("time-slider-value");
+let engineThinkingProgressBar = document.getElementById('engine-thinking-progress-bar')
+let resignButton = document.getElementById('resign-button')
+
+
+//*----------------------------- variables ----------------------------------------//
+//* config for board ui object
+const config = {
+  draggable: true,
+  position: "start",
+  onDragStart: onDragStartHandler,
+  onDrop: onDropHandler,
+  onSnapEnd: onSnapEndHandler,
+
+  showNotation: "true",
+  showErrors: "console",
+};
+
+//* board object: used for ui of board
+let board = null;
+//*game object is used for handling chess logic
 let game = new Chess();
 
+//* user is playing white or black?
+let currOrientation = "white";
+
+//* used to store the connection for getting best move
 let playEngineMoveGetRequestXHR;
+
+//* used to maintain the progress bar
+let progressInterval;
+
+
+
+
+
+
+//*------------------------------------ Event Listners ----------------------------------------//
+
+newGameWhiteButton.addEventListener("click", function () {
+  playNewGameAsWhite();
+});
+
+newGameBlackButton.addEventListener("click", function () {
+  playNewGameAsBlack();
+});
+
+timeSlider.addEventListener("input", function () {
+  timeSliderValueDiv.textContent = this.value;
+});
+
+resignButton.addEventListener('click', function() {
+  if (currOrientation === 'white') {
+    playNewGameAsWhite();
+  } else {
+    playNewGameAsBlack();
+  }
+})
+
+
+//*-------------------------------------------- functions -------------------------------------------//
+
+function playNewGameAsWhite() {
+  reset();
+  board.orientation("white");
+  currOrientation = 'white'
+}
+
+
+function playNewGameAsBlack() {
+  reset();
+  board.orientation("black");
+  currOrientation = 'black'
+  playEngineMove();
+}
+
+
+function showFireExplosion() {
+  let fireExplosion = document.getElementById('fire-explode');
+  fireExplosion.style.display = 'block';
+  playFireExplodeAudio();
+  setTimeout(function() {
+    fireExplosion.style.display = 'none';
+
+    //* stop fire explode audio
+    let fireAudio = document.getElementById('fire-explode-audio');
+    fireAudio.pause();
+    fireAudio.currentTime = 0;
+  }, 2000); //* Hide after 2 second
+}
+
+
+function playPieceMoveSound() {
+  document.getElementById('piece-move-audio').play();
+}
+
+
+function playFireExplodeAudio() {
+  // Stop all audio elements
+  let audioElements = document.getElementsByTagName('audio');
+  for (let i = 0; i < audioElements.length; i++) {
+    audioElements[i].pause();
+    audioElements[i].currentTime = 0; // Reset audio to start position
+  }
+  document.getElementById('fire-explode-audio').play();
+}
+
 
 /*
  * Documentattion:
@@ -26,16 +134,21 @@ let playEngineMoveGetRequestXHR;
  */
 function onDragStartHandler(source, piece, position, orientation) {
   //* do not let the user drag any piece, if game is over
-  if (game.game_over()) return false;
+  if (game.game_over()) 
+    return false;
 
-  //* only let user pick up pieces for the side to move
   if (
-    (game.turn() === "w" && piece.search(/^b/) !== -1) ||
-    (game.turn() === "b" && piece.search(/^w/) !== -1)
+    //*only let user pick up pieces for the side to move
+    ((game.turn() === "w" && piece.search(/^b/) !== -1) ||
+    (game.turn() === "b" && piece.search(/^w/) !== -1))
+    ||
+    //* if it's engine's turn, and user is trying to move engine's piece
+    ((currOrientation == 'white' && piece.search(/^b/) !== -1) || (currOrientation === "black" && piece.search(/^w/) !== -1))
   ) {
     return false;
   }
 }
+
 
 /*
  * Fires when a piece is dropped.
@@ -68,39 +181,94 @@ function onDropHandler(source, target) {
   //* to the original square from where drag started
   if (move === null) return "snapback";
 
+  //* play piece move audio
+  playPieceMoveSound();
+  
+  //*TODO: when engine is thinking, dont let user play on it's behalf
+  //*for now cancel last move request
+  if (playEngineMoveGetRequestXHR) {
+    playEngineMoveGetRequestXHR.abort()
+  }
+
   playEngineMove();
-  //* update the divs with status
-  updateStatusDivs();
 }
+
+
+function parseAlgebraicMove(moveString) {
+  let res = {
+    from: moveString[0] + moveString[1],
+    to: moveString[2] + moveString[3],
+  }
+
+  if (moveString.length > 4) {
+    // TODO: 
+    res.promotion = moveString[4].toLowerCase()
+  } 
+  
+  return res;
+}
+
 
 function playEngineMove() {
   console.log("\n\nmaking request, curr time = " + new Date());
 
-  let url = "/api/bestmove?fen=" + game.fen() + "&movetime=" + timeSlider.value;
+  let moveTimeInSeconds = timeSlider.value;
+  //* time out limit = (moveTime + 5) seconds
+  let timeOut = (parseInt(moveTimeInSeconds) + 5) * 1000;
+  let url = "/api/bestmove?fen=" + game.fen() + "&movetime=" + moveTimeInSeconds;
+
+  updateStatusDivs();
+   
+  //*show progress bar and remove text
+  engineStatusTextDiv.innerHTML = ""
+  startProgressUntilTime(parseInt(moveTimeInSeconds))
+  
   //* get best move
-  playEngineMoveGetRequestXHR = $.get(url, function (response) {
-    console.log("got response for request, curr time = " + new Date());
-    console.log("response: " + response);
-    console.log("\ngame.fen(): " + game.fen());
+  playEngineMoveGetRequestXHR = $.ajax(
+  {
+    url: url,
+    method: 'GET',
+    timeout: timeOut,
 
-    //*TODO: parse move properly in case of promotion
-    if (
-      game.move({
-        from: response[0] + response[1],
-        to: response[2] + response[3],
-      }) === null
-    ) {
-      console.log(".move() failed!!!!");
+    success: function (response) {
+      console.log("got response for request, curr time = " + new Date());
+      console.log("response: " + response);
+      console.log("\ngame.fen(): " + game.fen());
+  
+      //*TODO: parse move properly in case of promotion
+      if (game.move(parseAlgebraicMove(response)) === null) {
+        console.log(".move() failed!!!!");
+      }
+      console.log("game.fen(): " + game.fen());
+  
+      //* update ui board
+      board.position(game.fen());
+  
+      //* play piece move audio
+      playPieceMoveSound();
+
+      //* hide spinner and show engine output
+      engineStatusTextDiv.innerHTML = response
+
+      //* update the divs with status
+      updateStatusDivs();
+    },
+
+    error: function(xhr, status, error) {
+      // Handle error
+      console.error("Error:", error);
+  
+      //*hide spinner
+      engineStatusTextDiv.innerHTML = "Error: " + error;
+  
     }
-    console.log("game.fen(): " + game.fen());
-
-    // update ui board
-    board.position(game.fen());
-  }).fail(function (xhr, status, error) {
-    // Handle error
-    console.error("Error:", error);
+    
   });
+
+  
+
 }
+
 
 /*
  * Call api to get best move
@@ -108,46 +276,39 @@ function playEngineMove() {
  */
 function getBestMoveFromFen(fen) {}
 
-// update the board position after the piece snap
-// for castling, en passant, pawn promotion
+
+//* update the board position after the piece snap
+//* for castling, en passant, pawn promotion
 function onSnapEndHandler() {
   board.position(game.fen());
 }
 
+
 function updateStatusDivs() {
   var statusString = "";
-
   var moveColor = "White";
   if (game.turn() === "b") {
     moveColor = "Black";
   }
 
   if (game.in_checkmate()) {
-    statusString = "Game over, " + moveColor + " is in checkmate.";
+    statusString = "Game over[" + moveColor + " is checkmated]";
+    showFireExplosion()
   } else if (game.in_draw()) {
-    statusString = "Game over, drawn position";
+    statusString = "Game over[Draw]";
   } else {
     statusString = moveColor + " to move";
-
     if (game.in_check()) {
-      statusString += ", " + moveColor + " is in check";
+      statusString += ", " + moveColor + " is in check!";
     }
   }
 
   console.log("statusString= " + statusString);
   console.log("statusDiv: " + statusDiv);
   statusDiv.innerHTML = "      " + statusString;
-  fen.innerHTML = "      " + game.fen();
-  pgn.innerHTML = "      " + game.pgn();
+  fenDiv.innerHTML = "      " + game.fen();
+  pgnDiv.innerHTML = "      " + game.pgn();
 }
-
-let currOrientation = "white";
-
-let newGameWhiteButton = document.getElementById("new-game-white-button");
-let newGameBlackButton = document.getElementById("new-game-black-button");
-
-let timeSlider = document.getElementById("time-slider");
-let timeSliderValueDiv = document.getElementById("time-slider-value");
 
 //let changePlayerButton = document.getElementById("change-player-button");
 //
@@ -156,23 +317,54 @@ let timeSliderValueDiv = document.getElementById("time-slider-value");
 //  board.orientation(currOrientation);
 //});
 
+
+
+
+
+function startProgressUntilTime(timeInSeconds) {
+    var progressBar = document.getElementById('engine-thinking-progress-bar');
+    var currentValue = 0;
+    //* Milliseconds
+    var interval = 50; 
+    //* Calculate total steps
+    var totalSteps = timeInSeconds * 1000 / interval; 
+    
+    //* Clear any existing progress interval
+    clearInterval(progressInterval);
+    
+    //* Update progress bar at regular intervals
+    progressInterval = setInterval(function() {
+        currentValue++;
+        var progressPercentage = (currentValue / totalSteps) * 100;
+        progressBar.style.width = progressPercentage + "%";
+        progressBar.setAttribute("aria-valuenow", progressPercentage);
+        
+        if (currentValue >= totalSteps) {
+            //* clearInterval(progressInterval); // Stop updating progress when time is reached
+            resetProgressBar()
+        }
+    }, interval);
+}
+
+
+function resetProgressBar() {
+    var progressBar = document.getElementById('engine-thinking-progress-bar');
+    progressBar.style.width = "0%";
+    progressBar.setAttribute("aria-valuenow", "0");
+    //* Stop the progress interval
+    clearInterval(progressInterval); 
+}
+
+
+
+
 function reset() {
-  //enable buttons
+  //*enable buttons
 
   game = new Chess();
-
-  var config = {
-    draggable: true,
-    position: "start",
-    onDragStart: onDragStartHandler,
-    onDrop: onDropHandler,
-    onSnapEnd: onSnapEndHandler,
-
-    showNotation: "true",
-    showErrors: "console",
-  };
   board = Chessboard("myBoard", config);
 
+  resetProgressBar();
   updateStatusDivs();
 
   //* if we requested a best move from server,
@@ -182,7 +374,10 @@ function reset() {
   }
 
   timeSliderValueDiv.textContent = timeSlider.value;
+  engineStatusTextDiv.innerHTML = ""
 }
+
+
 
 
 
@@ -190,21 +385,4 @@ function reset() {
 reset();
 
 
-
-
-
-
-newGameWhiteButton.addEventListener("click", function () {
-  reset();
-});
-
-newGameBlackButton.addEventListener("click", function () {
-  reset();
-  board.orientation("black");
-  playEngineMove();
-});
-
-timeSlider.addEventListener("input", function () {
-  timeSliderValueDiv.textContent = this.value;
-});
 
