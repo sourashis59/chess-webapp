@@ -86,11 +86,33 @@ function playNewGameAsBlack() {
 
 
 function showFireExplosion() {
-  var fireExplosion = document.getElementById('fire-explode');
+  let fireExplosion = document.getElementById('fire-explode');
   fireExplosion.style.display = 'block';
+  playFireExplodeAudio();
   setTimeout(function() {
     fireExplosion.style.display = 'none';
+
+    //* stop fire explode audio
+    let fireAudio = document.getElementById('fire-explode-audio');
+    fireAudio.pause();
+    fireAudio.currentTime = 0;
   }, 2000); //* Hide after 2 second
+}
+
+
+function playPieceMoveSound() {
+  document.getElementById('piece-move-audio').play();
+}
+
+
+function playFireExplodeAudio() {
+  // Stop all audio elements
+  let audioElements = document.getElementsByTagName('audio');
+  for (let i = 0; i < audioElements.length; i++) {
+    audioElements[i].pause();
+    audioElements[i].currentTime = 0; // Reset audio to start position
+  }
+  document.getElementById('fire-explode-audio').play();
 }
 
 
@@ -115,10 +137,13 @@ function onDragStartHandler(source, piece, position, orientation) {
   if (game.game_over()) 
     return false;
 
-  //* only let user pick up pieces for the side to move
   if (
-    (game.turn() === "w" && piece.search(/^b/) !== -1) ||
-    (game.turn() === "b" && piece.search(/^w/) !== -1)
+    //*only let user pick up pieces for the side to move
+    ((game.turn() === "w" && piece.search(/^b/) !== -1) ||
+    (game.turn() === "b" && piece.search(/^w/) !== -1))
+    ||
+    //* if it's engine's turn, and user is trying to move engine's piece
+    ((currOrientation == 'white' && piece.search(/^b/) !== -1) || (currOrientation === "black" && piece.search(/^w/) !== -1))
   ) {
     return false;
   }
@@ -156,6 +181,9 @@ function onDropHandler(source, target) {
   //* to the original square from where drag started
   if (move === null) return "snapback";
 
+  //* play piece move audio
+  playPieceMoveSound();
+  
   //*TODO: when engine is thinking, dont let user play on it's behalf
   //*for now cancel last move request
   if (playEngineMoveGetRequestXHR) {
@@ -208,9 +236,7 @@ function playEngineMove() {
       console.log("\ngame.fen(): " + game.fen());
   
       //*TODO: parse move properly in case of promotion
-      if (
-        game.move(parseAlgebraicMove(response)) === null
-      ) {
+      if (game.move(parseAlgebraicMove(response)) === null) {
         console.log(".move() failed!!!!");
       }
       console.log("game.fen(): " + game.fen());
@@ -218,6 +244,9 @@ function playEngineMove() {
       //* update ui board
       board.position(game.fen());
   
+      //* play piece move audio
+      playPieceMoveSound();
+
       //* hide spinner and show engine output
       engineStatusTextDiv.innerHTML = response
 
