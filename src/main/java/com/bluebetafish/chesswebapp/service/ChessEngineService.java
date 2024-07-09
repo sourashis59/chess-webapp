@@ -30,7 +30,7 @@ public class ChessEngineService {
         UCI bluebetafishUciWrapper = new UCI();
 
         System.out.println("\nReceived request: moveTime = " + moveTime + ", fen= " + fen);
-        System.out.println("Time= " + LocalTime.now());
+        // System.out.println("Time= " + LocalTime.now());
 
         bluebetafishUciWrapper.startBluebetafish();
         bluebetafishUciWrapper.uciNewGame();
@@ -42,7 +42,7 @@ public class ChessEngineService {
         var result10depth = bluebetafishUciWrapper.bestMove(moveTime, 60000).getResultOrThrow();
 
         System.out.println("Best move after analysing 10 moves deep: " + result10depth.getCurrent());
-        System.out.println("Time= " + LocalTime.now());
+        // System.out.println("Time= " + LocalTime.now());
 
         //* destroy the instance(TODO: keep this in finally block in case of exceptions)
         bluebetafishUciWrapper.close();
