@@ -6,6 +6,10 @@
 
     <img src='readme-images/checkmate.gif'>
 
+-----------
+---------
+----------
+
 ## Project structure
 - Backend service is developed using Java/Spring.
 - API to get best move: `/api/bestmove/fen={FEN}&movetime={MOVE_TIME}`
@@ -20,6 +24,10 @@
     - `chessjs` library is used for validating chess moves using JavaScript on front-end.
     - `chessboardjs` library is used as the UI library on front-end.
 
+
+-----------
+------------
+----------
 
 ## Acknowledgments
 
