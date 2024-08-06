@@ -33,6 +33,6 @@
 
 This project makes use of the following open source libraries:
 
-- [neat-chess](https://github.com/nomemory/neat-chess): UCI chess engine wrapper in Java.
+- [neat-chess](https://github.com/nomemory/neat-chess): UCI chess engine adapter class in Java.
 - [chessboardjs](https://github.com/oakmac/chessboardjs/): A JavaScript chessboard UI component.
 - [chessjs](https://github.com/jhlywa/chess.js/tree/master): A JavaScript library for validating chess moves and checkmates/stalemates.
