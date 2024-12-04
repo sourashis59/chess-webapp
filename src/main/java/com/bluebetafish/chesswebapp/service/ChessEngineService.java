@@ -1,6 +1,8 @@
 package com.bluebetafish.chesswebapp.service;
 
 import net.andreinc.neatchess.client.UCI;
+import net.andreinc.neatchess.client.UCIResponse;
+import net.andreinc.neatchess.client.model.BestMove;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalTime;
@@ -27,16 +29,26 @@ public class ChessEngineService {
         * So for now, for each request, i am creating a new engine instance
         * and destroying it once the request is processed
         * */
-        UCI bluebetafishUciWrapper = new UCI();
+        UCI engine = new UCI();
+        engine.startBluebetafish();
 
-        return getBestMove(fen, moveTime, bluebetafishUciWrapper);
+        String res = null;
+        try {
+            res = getBestMove(fen, moveTime, engine);
+        } finally {
+            //* destroy the instance
+            engine.close();
+        }
+        return res;
     }
 
     public String getBestMove(String fen, long moveTime, UCI engine) {
         //System.out.println("\nReceived request: moveTime = " + moveTime + ", fen= " + fen);
         // System.out.println("Time= " + LocalTime.now());
 
-        engine.startBluebetafish();
+        //* dont cal this method. This will create new process
+//        engine.startBluebetafish();
+
         engine.uciNewGame();
         engine.positionFen(fen);
 
@@ -47,11 +59,6 @@ public class ChessEngineService {
 
         // System.out.println("Best move after analysing 10 moves deep: " + result10depth.getCurrent());
         // System.out.println("Time= " + LocalTime.now());
-
-        //* destroy the instance(TODO: keep this in finally block in case of exceptions)
-        engine.close();
-
-
         return result.getCurrent();
     }
 
