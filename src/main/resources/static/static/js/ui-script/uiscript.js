@@ -40,7 +40,25 @@ let progressInterval;
 //* socket connection for getting best moves from engine
 let engineSocket = null;
 
+/*
+* If socket connection is not established yet, then socket.send(message) function throws exception:
+* `Uncaught InvalidStateError: Failed to execute 'send' on 'WebSocket': Still in CONNECTING state.`
+*
+* So When we want to send message through socket, check if connection is established, then only send.
+* Otherwise put in the queue, And inside socket.onopen() callback, send the messages from the queue [when connection becomes open]. 
+*/
+let engineSocketToBeSentMessageQueue = []
 
+function sendEngineSocketMessageWithOpenConnectionChecking(message) {
+  if (engineSocket.readyState === WebSocket.OPEN) {
+    engineSocket.send(message);
+  } else if (engineSocket.readyState === WebSocket.CONNECTING) {
+      console.log('WebSocket not open yet. Queuing message.');
+      engineSocketToBeSentMessageQueue.push(message);
+  } else {
+      console.error('WebSocket is not open. Cannot send message.');
+  }
+}
 
 
 //*------------------------------------ Event Listners ----------------------------------------//
@@ -207,7 +225,7 @@ function playNewGameAsBlack() {
   board.orientation("black");
   currOrientation = 'black'
 
-  setTimeout(requestEngineMove(), 5000);
+  requestEngineMove()
 }
 
 
@@ -241,7 +259,7 @@ function onDragStartHandler(source, piece, position, orientation) {
     (game.turn() === "b" && piece.search(/^w/) !== -1))
     ||
     //* if it's engine's turn, and user is trying to move engine's piece
-    ((currOrientation == 'white' && piece.search(/^b/) !== -1) || (currOrientation === "black" && piece.search(/^w/) !== -1))
+    ((currOrientation === 'white' && piece.search(/^b/) !== -1) || (currOrientation === "black" && piece.search(/^w/) !== -1))
   ) {
     return false;
   }
@@ -305,7 +323,8 @@ function requestEngineMove() {
   console.log(request);
 
   //* send request message for best move
-  engineSocket.send(JSON.stringify(request));
+  // engineSocket.send(JSON.stringify(request));
+  sendEngineSocketMessageWithOpenConnectionChecking(JSON.stringify(request));
 }
 
 
@@ -346,6 +365,11 @@ function reset() {
 function assignHandlersForEngineSocket() {
   engineSocket.onopen = function(event) {
     console.log("Connection established!");
+    
+    //* read the comments for variable definition of `engineSocketToBeSentMessageQueue`
+    while (engineSocketToBeSentMessageQueue.length > 0) {
+      engineSocket.send(engineSocketToBeSentMessageQueue.shift());
+    }
   };
   
   engineSocket.onmessage = function(event) {
@@ -396,23 +420,10 @@ function assignHandlersForEngineSocket() {
 
 
 
-//* Send a message to get the best move
-function requestBestMove(fen, moveTime) {
-  const request = {
-    'fen': `${fen}`,
-    'moveTime': `${moveTime}`
-  }
-  console.log("Request best move: ")
-  console.log(request);
-  engineSocket.send(JSON.stringify(request));
-}
-
 
 
 
 reset();
-
-
 
 
 
