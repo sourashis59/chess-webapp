@@ -34,13 +34,11 @@ let game = new Chess();
 //* user is playing white or black?
 let currOrientation = "white";
 
-//* used to store the connection for getting best move
-let playEngineMoveGetRequestXHR;
-
 //* used to maintain the progress bar
 let progressInterval;
 
-
+//* socket connection for getting best moves from engine
+let engineSocket = null;
 
 
 
@@ -48,10 +46,12 @@ let progressInterval;
 //*------------------------------------ Event Listners ----------------------------------------//
 
 newGameWhiteButton.addEventListener("click", function () {
+  console.log("\nNewGameWhiteButton clicked")
   playNewGameAsWhite();
 });
 
 newGameBlackButton.addEventListener("click", function () {
+  console.log("\nNewGameBlackButton clicked")
   playNewGameAsBlack();
 });
 
@@ -69,22 +69,6 @@ resignButton.addEventListener('click', function() {
 
 
 //*-------------------------------------------- functions -------------------------------------------//
-
-function playNewGameAsWhite() {
-  reset();
-  board.orientation("white");
-  currOrientation = 'white'
-}
-
-
-function playNewGameAsBlack() {
-  reset();
-  board.orientation("black");
-  currOrientation = 'black'
-  playEngineMove();
-}
-
-
 function showFireExplosion() {
   let fireExplosion = document.getElementById('fire-explode');
   fireExplosion.style.display = 'block';
@@ -114,6 +98,120 @@ function playFireExplodeAudio() {
   }
   document.getElementById('fire-explode-audio').play();
 }
+
+
+function parseAlgebraicMove(moveString) {
+  let res = {
+    from: moveString[0] + moveString[1],
+    to: moveString[2] + moveString[3],
+  }
+
+  if (moveString.length > 4) {
+    // TODO: 
+    res.promotion = moveString[4].toLowerCase()
+  } 
+  
+  return res;
+}
+
+
+function updateStatusDivs() {
+  var statusString = "";
+  var moveColor = "White";
+  if (game.turn() === "b") {
+    moveColor = "Black";
+  }
+
+  if (game.in_checkmate()) {
+    statusString = "Game over[" + moveColor + " is checkmated]";
+    showFireExplosion()
+  } else if (game.in_draw()) {
+    statusString = "Game over[Draw]";
+  } else {
+    statusString = moveColor + " to move";
+    if (game.in_check()) {
+      statusString += ", " + moveColor + " is in check!";
+    }
+  }
+
+  console.log("statusString= " + statusString);
+  console.log("statusDiv: " + statusDiv);
+  statusDiv.innerHTML = "      " + statusString;
+  fenDiv.innerHTML = "      " + game.fen();
+  pgnDiv.innerHTML = "      " + game.pgn();
+}
+
+
+
+
+//let changePlayerButton = document.getElementById("change-player-button");
+//
+//changePlayerButton.addEventListener("click", function(){
+//  currOrientation = (currOrientation === 'white') ? 'black' : 'white';
+//  board.orientation(currOrientation);
+//});
+
+
+function startProgressUntilTime(timeInSeconds) {
+  var progressBar = document.getElementById('engine-thinking-progress-bar');
+  var currentValue = 0;
+  //* Milliseconds
+  var interval = 50; 
+  //* Calculate total steps
+  var totalSteps = timeInSeconds * 1000 / interval; 
+  
+  //* Clear any existing progress interval
+  clearInterval(progressInterval);
+  
+  //* Update progress bar at regular intervals
+  progressInterval = setInterval(function() {
+      currentValue++;
+      var progressPercentage = (currentValue / totalSteps) * 100;
+      progressBar.style.width = progressPercentage + "%";
+      progressBar.setAttribute("aria-valuenow", progressPercentage);
+      
+      if (currentValue >= totalSteps) {
+          //* clearInterval(progressInterval); // Stop updating progress when time is reached
+          resetProgressBar()
+      }
+  }, interval);
+}
+
+
+function resetProgressBar() {
+  var progressBar = document.getElementById('engine-thinking-progress-bar');
+  progressBar.style.width = "0%";
+  progressBar.setAttribute("aria-valuenow", "0");
+  //* Stop the progress interval
+  clearInterval(progressInterval); 
+}
+
+
+
+
+
+
+
+
+
+
+function playNewGameAsWhite() {
+  reset();
+  board.orientation("white");
+  currOrientation = 'white'
+}
+
+
+function playNewGameAsBlack() {
+  reset();
+  board.orientation("black");
+  currOrientation = 'black'
+
+  setTimeout(requestEngineMove(), 5000);
+}
+
+
+
 
 
 /*
@@ -183,98 +281,35 @@ function onDropHandler(source, target) {
 
   //* play piece move audio
   playPieceMoveSound();
-  
-  //*TODO: when engine is thinking, dont let user play on it's behalf
-  //*for now cancel last move request
-  if (playEngineMoveGetRequestXHR) {
-    playEngineMoveGetRequestXHR.abort()
-  }
 
-  playEngineMove();
+  requestEngineMove();
 }
 
 
-function parseAlgebraicMove(moveString) {
-  let res = {
-    from: moveString[0] + moveString[1],
-    to: moveString[2] + moveString[3],
-  }
 
-  if (moveString.length > 4) {
-    // TODO: 
-    res.promotion = moveString[4].toLowerCase()
-  } 
-  
-  return res;
-}
-
-
-function playEngineMove() {
-  console.log("\n\nmaking request, curr time = " + new Date());
+function requestEngineMove() {
+  console.log("making request, curr time = " + new Date());
+  updateStatusDivs();
 
   let moveTimeInSeconds = timeSlider.value;
-  //* time out limit = (moveTime + 5) seconds
-  let timeOut = (parseInt(moveTimeInSeconds) + 5) * 1000;
-  let url = "/api/bestmove?fen=" + game.fen() + "&movetime=" + moveTimeInSeconds;
-
-  updateStatusDivs();
-   
+  
   //*show progress bar and remove text
   engineStatusTextDiv.innerHTML = ""
   startProgressUntilTime(parseInt(moveTimeInSeconds))
   
-  //* get best move
-  playEngineMoveGetRequestXHR = $.ajax(
-  {
-    url: url,
-    method: 'GET',
-    timeout: timeOut,
+  const request = {
+    'fen': `${game.fen()}`,
+    'moveTime': `${moveTimeInSeconds}`
+  }
+  console.log("Request best move: ")
+  console.log(request);
 
-    success: function (response) {
-      console.log("got response for request, curr time = " + new Date());
-      console.log("response: " + response);
-      console.log("\ngame.fen(): " + game.fen());
-  
-      //*TODO: parse move properly in case of promotion
-      if (game.move(parseAlgebraicMove(response)) === null) {
-        console.log(".move() failed!!!!");
-      }
-      console.log("game.fen(): " + game.fen());
-  
-      //* update ui board
-      board.position(game.fen());
-  
-      //* play piece move audio
-      playPieceMoveSound();
-
-      //* hide spinner and show engine output
-      engineStatusTextDiv.innerHTML = response
-
-      //* update the divs with status
-      updateStatusDivs();
-    },
-
-    error: function(xhr, status, error) {
-      // Handle error
-      console.error("Error:", error);
-  
-      //*hide spinner
-      engineStatusTextDiv.innerHTML = "Error: " + error;
-  
-    }
-    
-  });
-
-  
-
+  //* send request message for best move
+  engineSocket.send(JSON.stringify(request));
 }
 
 
-/*
- * Call api to get best move
- * Returns null in case of error
- */
-function getBestMoveFromFen(fen) {}
+
 
 
 //* update the board position after the piece snap
@@ -282,80 +317,6 @@ function getBestMoveFromFen(fen) {}
 function onSnapEndHandler() {
   board.position(game.fen());
 }
-
-
-function updateStatusDivs() {
-  var statusString = "";
-  var moveColor = "White";
-  if (game.turn() === "b") {
-    moveColor = "Black";
-  }
-
-  if (game.in_checkmate()) {
-    statusString = "Game over[" + moveColor + " is checkmated]";
-    showFireExplosion()
-  } else if (game.in_draw()) {
-    statusString = "Game over[Draw]";
-  } else {
-    statusString = moveColor + " to move";
-    if (game.in_check()) {
-      statusString += ", " + moveColor + " is in check!";
-    }
-  }
-
-  console.log("statusString= " + statusString);
-  console.log("statusDiv: " + statusDiv);
-  statusDiv.innerHTML = "      " + statusString;
-  fenDiv.innerHTML = "      " + game.fen();
-  pgnDiv.innerHTML = "      " + game.pgn();
-}
-
-//let changePlayerButton = document.getElementById("change-player-button");
-//
-//changePlayerButton.addEventListener("click", function(){
-//  currOrientation = (currOrientation === 'white') ? 'black' : 'white';
-//  board.orientation(currOrientation);
-//});
-
-
-
-
-
-function startProgressUntilTime(timeInSeconds) {
-    var progressBar = document.getElementById('engine-thinking-progress-bar');
-    var currentValue = 0;
-    //* Milliseconds
-    var interval = 50; 
-    //* Calculate total steps
-    var totalSteps = timeInSeconds * 1000 / interval; 
-    
-    //* Clear any existing progress interval
-    clearInterval(progressInterval);
-    
-    //* Update progress bar at regular intervals
-    progressInterval = setInterval(function() {
-        currentValue++;
-        var progressPercentage = (currentValue / totalSteps) * 100;
-        progressBar.style.width = progressPercentage + "%";
-        progressBar.setAttribute("aria-valuenow", progressPercentage);
-        
-        if (currentValue >= totalSteps) {
-            //* clearInterval(progressInterval); // Stop updating progress when time is reached
-            resetProgressBar()
-        }
-    }, interval);
-}
-
-
-function resetProgressBar() {
-    var progressBar = document.getElementById('engine-thinking-progress-bar');
-    progressBar.style.width = "0%";
-    progressBar.setAttribute("aria-valuenow", "0");
-    //* Stop the progress interval
-    clearInterval(progressInterval); 
-}
-
-
 
 
 function reset() {
@@ -367,22 +328,91 @@ function reset() {
   resetProgressBar();
   updateStatusDivs();
 
-  //* if we requested a best move from server,
-  //* then we need to cancel the request
-  if (playEngineMoveGetRequestXHR) {
-    playEngineMoveGetRequestXHR.abort();
-  }
-
   timeSliderValueDiv.textContent = timeSlider.value;
   engineStatusTextDiv.innerHTML = ""
+
+
+  //* we need to reset the socket connection, otherwise for prev socket
+  //* there might be one request already running on server chess engine, which may take time.
+  //* so better create new connection and allocate new engine process.
+  //* ----> One engine / match
+  if (engineSocket !== null) engineSocket.close();
+  engineSocket = new WebSocket("/chess");
+  assignHandlersForEngineSocket();
+}
+
+
+
+function assignHandlersForEngineSocket() {
+  engineSocket.onopen = function(event) {
+    console.log("Connection established!");
+  };
+  
+  engineSocket.onmessage = function(event) {
+    let response = event.data
+    console.log("Received message on socket: ", response);
+    console.log("Curr time = " + new Date());
+    console.log("Game.fen(): " + game.fen());
+  
+    response = JSON.parse(response)
+  
+    //*TODO:socket: if response.status is not SUCCESS, then show error
+    //* if the response is not for the current state, then ignore
+    if (game.fen() !== response['fen']) {
+      console.log("Response not for current state, response: " + response + ", game.fen(): " + game.fen())
+      return;
+    }
+  
+    const bestMove = response['bestMove']
+    //*TODO: parse move properly in case of promotion
+    if (game.move(parseAlgebraicMove(bestMove)) === null) {
+      console.log(".move() failed!!!!");
+    }
+  
+    //* update ui board
+    board.position(game.fen());
+  
+    //* play piece move audio
+    playPieceMoveSound();
+  
+    //* hide spinner and show engine output
+    engineStatusTextDiv.innerHTML = bestMove
+  
+    //* update the divs with status
+    updateStatusDivs();
+  };
+  
+  engineSocket.onclose = function(event) {
+    console.log("Connection closed.");
+  };
+  
+  engineSocket.onerror = function(error) {
+    console.error("WebSocket error:", error);
+      
+    //*hide spinner
+    engineStatusTextDiv.innerHTML = "Error: " + error;
+  };  
+}
+
+
+
+//* Send a message to get the best move
+function requestBestMove(fen, moveTime) {
+  const request = {
+    'fen': `${fen}`,
+    'moveTime': `${moveTime}`
+  }
+  console.log("Request best move: ")
+  console.log(request);
+  engineSocket.send(JSON.stringify(request));
 }
 
 
 
 
-
-
 reset();
+
+
 
 
 
