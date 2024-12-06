@@ -356,6 +356,8 @@ function reset() {
   //* so better create new connection and allocate new engine process.
   //* ----> One engine / match
   if (engineSocket !== null) engineSocket.close();
+  //* clear queue
+  engineSocketToBeSentMessageQueue = []
   engineSocket = new WebSocket("/chess");
   assignHandlersForEngineSocket();
 }
