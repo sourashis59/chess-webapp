@@ -2,10 +2,13 @@
 - GUI web page to play against BlueBetaFish (CLI chess engine).
 - BlueBetaFish source code: https://github.com/BlueBetaFish/chess-engine
 
+    https://github.com/user-attachments/assets/a41adc06-c725-4a9c-826b-95513dda6401
+    <!---
     <img src='readme-images/ui_screenshot.png'>
 
     <img src='readme-images/checkmate.gif'>
-
+    -->
+  
 -----------
 ---------
 ----------
