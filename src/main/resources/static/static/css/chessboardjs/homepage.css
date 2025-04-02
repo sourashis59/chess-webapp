@@ -1,32 +1,64 @@
-body{
-    background-color: rgb(210, 215, 247);
+body {
+    background-color: #1d031f;
+    font-family: "Outfit", sans-serif
+} 
+
+.card {
+    border: none;
+    background-color: transparent;
+}
+
+.card-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.card-text {
+    display: none;
+}
+
+.navbar-brand {
+    margin-left: 10px;
+}
+
+.nav-link img {
+    width: 20px;
+    height: 20px;
+    margin: 5px;
+}
+.nav-link {
+    opacity: 50%;
+}
+
+.nav-link:hover {
+    opacity: 100%;
 }
 
 #myBoard {
-    width:600px;
+    width:60vw;
+    max-width: 600px;
 }
 
+button:hover {
+    opacity: 80%;
+}
 
-
-
-
-
-@media screen and (max-width: 1001px) {
+@media screen and (max-width: 1024px) {
     #myBoard {
-        width:500px;
+        width:70vw;
     }
 }
 
-
-@media screen and (max-width: 1000px) and (max-width: 801px) {
+@media screen and (max-width: 767px){
     #myBoard {
-        width:400px;
+        width:70vw;
     }
 }
 
-@media screen and (max-width: 1000px) and (max-width: 601px) {
+@media screen and (max-width: 480) {
     #myBoard {
-        width:400px;
+        width:80vw;
     }
 }
 
